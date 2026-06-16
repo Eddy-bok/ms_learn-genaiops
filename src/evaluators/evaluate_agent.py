@@ -34,6 +34,10 @@ model_deployment_name = os.environ.get("MODEL_NAME", "gpt-4.1")
 dataset_name          = "trail-guide-evaluation-dataset"
 dataset_version       = "1"
 
+
+# Pass/fail threshold for evaluator scores on a 1-5 scale.
+# Default is 3.0. Use 4.0 for stricter production-style evaluation.
+PASS_THRESHOLD = float(os.environ.get("PASS_THRESHOLD", "4.0"))
 # The script writes a plain-text summary here when it finishes.
 # This file is committed to the branch so the GitHub Actions workflow
 # can read it and post results as a PR comment — no re-running needed.
@@ -356,18 +360,20 @@ def retrieve_and_display_results(eval_object, run):
         f"  Total items  : {len(output_items)}",
         f"  Errored items: {len(errored_items)}",
         f"  Scored items : {len(scored_items)}",
-        "\nAverage Scores (1-5 scale, threshold: 3)",
+        #"\nAverage Scores (1-5 scale, threshold: 3)",
+        f"\nAverage Scores (1-5 scale, threshold: {PASS_THRESHOLD:g})",
     ]
 
     any_scores = False
-    pass_lines = ["\nPass Rates (score >= 3)"]
+    #pass_lines = ["\nPass Rates (score >= 3)"]
+    pass_lines = [f"\nPass Rates (score >= {PASS_THRESHOLD:g})"]
 
     for key, label in metric_labels.items():
         values = scores[key]
         if values:
             any_scores = True
             avg  = sum(values) / len(values)
-            rate = sum(1 for v in values if v >= 3) / len(values) * 100
+            rate = sum(1 for v in values if v >= PASS_THRESHOLD) / len(values) * 100
             lines.append(f"  {label}: {avg:.2f} (n={len(values)})")
             pass_lines.append(f"  {label}: {rate:.1f}%")
 
@@ -411,6 +417,7 @@ def main() -> None:
     print(f"  Project: {endpoint}")
     print(f"  Model:   {model_deployment_name}")
     print(f"  Dataset: {dataset_name} (v{dataset_version})")
+    print(f"  Pass threshold: {PASS_THRESHOLD:g}")
 
     try:
         data_id     = upload_dataset()                          # Step 1
